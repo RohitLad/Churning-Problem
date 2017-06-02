@@ -1,5 +1,5 @@
 ## Okay, so this is the Churn problem for banks
-## i.e. to predict if a customer drops his/her bank account
+## i.e. to predict if a customer leaves the bank or not
 
 # Keras is soooo easy!!!!
 # model could be improved by increasing the number of hidden layers and units per layer
@@ -33,8 +33,9 @@ X = enc.fit_transform(X).toarray()
 X = X[:,1:] # remove 1st column to avoid dummy variable trap
 X_train,X_test,Y_train,Y_test = model_selection.train_test_split(X,Y,test_size = 0.33, random_state = 79) # split data into test and train
 
-X_train = preprocessing.StandardScaler().fit_transform(X_train) # scale the data
-X_test = preprocessing.StandardScaler().fit_transform(X_test)
+scaler = preprocessing.StandardScaler()
+X_train = scaler.fit_transform(X_train) # scale the data
+X_test = scaler.fit_transform(X_test)
 
 
 ### PROCESSING ###

@@ -1,5 +1,5 @@
 ## Okay, so this is the Churn problem for banks
-## i.e. to predict if a customer leaves the bank or not
+## i.e. to predict if a customer drops his/her bank account
 
 # Keras is soooo easy!!!!
 # model could be improved by increasing the number of hidden layers and units per layer

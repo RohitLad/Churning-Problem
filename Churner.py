@@ -10,13 +10,16 @@ layer1 = 6
 layer2 = 6
 numepochs = 30
 batchsize = 10
+kfolds = 10
 ## Let's begin bitch
 
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing, model_selection
 from keras.models import Sequential
-from keras.layers import Dense, Activation
+from keras.layers import Dense, Activation, Dropout
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import cross_val_score, GridSearchCV
 ###  PREPROCESSING ###
 
 data = pd.read_csv('Churn_Modelling.csv') # read the file
@@ -31,7 +34,7 @@ Y[:] = le.fit_transform(Y[:]) # encode the labels
 enc = preprocessing.OneHotEncoder(categorical_features = [1]) # one hot encoding for the country
 X = enc.fit_transform(X).toarray()
 X = X[:,1:] # remove 1st column to avoid dummy variable trap
-X_train,X_test,Y_train,Y_test = model_selection.train_test_split(X,Y,test_size = 0.33, random_state = 79) # split data into test and train
+X_train,X_test,Y_train,Y_test = model_selection.train_test_split(X,Y,test_size = 0.2, random_state = 79) # split data into test and train
 
 scaler = preprocessing.StandardScaler()
 X_train = scaler.fit_transform(X_train) # scale the data
@@ -40,24 +43,55 @@ X_test = scaler.fit_transform(X_test)
 
 ### PROCESSING ###
 
-model = Sequential([Dense(units = layer1, input_dim = 11),Activation('relu'),Dense(units = layer2),Activation('relu'),Dense(units = 1),Activation('sigmoid')]) # create the model
 
-model.compile(optimizer = 'rmsprop',loss = 'binary_crossentropy',metrics=['accuracy']) # compile the model
+def build_Classifier(optimizer):
+    
+    model = Sequential()    
+    model.add(Dense(units = layer1, input_dim = 11, init = 'uniform', activation = 'relu'))
+    model.add(Dropout(rate = 0.1, seed = 73))
+    model.add(Dense(units = layer2, init = 'uniform', activation = 'relu'))
+    model.add(Dropout(rate = 0.1, seed = 23))
+    model.add(Dense(units = 1, init = 'uniform', activation = 'sigmoid'))    
+    #model = Sequential([Dense(units = layer1, input_dim = 11, init = 'uniform'),Activation('relu'),Dense(units = layer2, init = 'uniform'),Activation('relu'),Dense(units = 1, init = 'uniform'),Activation('sigmoid')]) # create the model
+    model.compile(optimizer = optimizer,loss = 'binary_crossentropy',metrics=['accuracy']) # compile the model
+    return model
 
-model.fit(X_train,Y_train,epochs = numepochs, batch_size = batchsize) # fit the model
+    
+# K FOLD 
+'''    
+model = KerasClassifier(build_fn = build_Classifier, batch_size = batchsize, nb_epoch = numepochs)
+accuracies = cross_val_score(estimator = model, X = X_train, y = Y_train, cv = kfolds,n_jobs = -1) # kfold regularization
+mean = accuracies.mean()
+variance = accuracies.std()
+'''
 
-predictions = model.predict(X_test) # predict the test data
+## TUNING THE ANN
 
-predictions = (predictions>=0.5) # probability to boolean
+model = KerasClassifier(build_fn = build_Classifier)
+parameters = {'batch_size':[25,32], 'nb_epoch':[60,100], 'optimizer':['adam', 'rmsprop']}
+
+grid_search = GridSearchCV(estimator = model, param_grid = parameters, scoring = 'accuracy', cv = kfolds)
+grid_search = grid_search.fit(X = X_train, y = Y_train)
+best_parameters = grid_search.best_params_
+best_accuracy = grid_search.best_score_
+
+#model.fit(X_train,Y_train,epochs = numepochs, batch_size = batchsize) # fit the model
+
+#predictions = model.predict(X_test) # predict the test data
+
+#predictions = (predictions>=0.5) # probability to boolean
 
 
 ### POSTPROCESSING ###
 
-Y_test = (Y_test == 1)
-accu = 0
-for i in range(np.size(predictions)):
-    if Y_train[i] == predictions[i]:
-        accu+=1
-accu = float(accu)/ np.size(predictions) # Accuracy
+#Y_test = (Y_test == 1)
+#accu = 0
 
-print 'Accuracy is: ',accu 
+#
+#for i in range(np.size(predictions)):
+#    if Y_train[i] == predictions[i]:
+#        accu+=1
+#accu = float(accu)/ np.size(predictions) # Accuracy
+#
+#print 'Accuracy is: ',accu 
+#
